@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
+	"errors"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/xueqianLu/trustednet/command"
+	"github.com/xueqianLu/trustednet/common"
 	"log"
 	"net"
 	"os"
@@ -15,6 +18,56 @@ const (
 	PORT = "8080"
 	TYPE = "tcp"
 )
+
+// generate remote report with random_a
+func DoAuth(random_a []byte, conn net.Conn) {
+	report, err := enclave.GetRemoteReport(random_a)
+	if err != nil {
+		log.Fatal("get remote report failed:", err)
+	}
+	d := command.NewAuthCommand(report)
+	_, _ = conn.Write(d)
+}
+
+// check remote report and get random_b
+func DoVerify(random_a []byte, payload []byte, conn net.Conn) ([]byte, error) {
+	report, err := enclave.VerifyLocalReport(payload)
+	if err != nil {
+		log.Fatal("get remote report failed:", err)
+	}
+	if len(report.Data) != 64 {
+		return nil, errors.New("invalid verify report data")
+	}
+	if bytes.Compare(report.Data[:32], random_a) != 0 {
+		return nil, errors.New("invalid verify report data")
+	}
+	return report.Data[32:64], nil
+}
+
+// generate remote report with random_b and random_c
+func DoGetKey(random_b []byte, random_c []byte, conn net.Conn) {
+	data := append(random_b, random_c...)
+	report, err := enclave.GetRemoteReport(data)
+	if err != nil {
+		log.Fatal("get remote report failed:", err)
+	}
+	d := command.NewGetKeyCommand(report)
+	_, _ = conn.Write(d)
+}
+
+func DoParseKey(random_c []byte, payload []byte, conn net.Conn) ([]byte, error) {
+	report, err := enclave.VerifyLocalReport(payload)
+	if err != nil {
+		log.Fatal("get remote report failed:", err)
+	}
+	if len(report.Data) != 64 {
+		return nil, errors.New("invalid verify report data")
+	}
+	if bytes.Compare(report.Data[:32], random_c) != 0 {
+		return nil, errors.New("invalid verify report data")
+	}
+	return report.Data[32:64], nil
+}
 
 func main() {
 	tcpServer, err := net.ResolveTCPAddr(TYPE, HOST+":"+PORT)
@@ -29,40 +82,37 @@ func main() {
 		println("Dial failed:", err.Error())
 		os.Exit(1)
 	}
-	received := make([]byte, 1024)
+	received := make([]byte, 65535)
 
-	// step 1. auth verify
-	d := command.NewAuthCommand([]byte{})
-	_, err = conn.Write(d)
-	if err != nil {
-		log.Fatal("write data failed", err)
-	}
+	random_a := common.GenRandom()
+
+	// step 1. auth
+	DoAuth(random_a, conn)
+
 	length, err := conn.Read(received)
 	if err != nil {
-		log.Fatal("read data failed", err)
+		log.Fatal("read conn failed:", err)
 	}
-	log.Println("got auth data:", hex.EncodeToString(received[:length]))
-
-	report, err := enclave.VerifyRemoteReport(received[:length])
+	// step 2. verify
+	random_b, err := DoVerify(random_a, received[1:length], conn)
 	if err != nil {
-		log.Fatal("verify remote report failed", err)
+		log.Fatal("do verify failed:", err)
 	}
+	// step 3. GetKey
+	random_c := common.GenRandom()
+	DoGetKey(random_b, random_c, conn)
 
-	reportdata, err := enclave.GetRemoteReport(report.Data)
-	if err != nil {
-		log.Fatal("generate remote report failed", err)
-	}
-
-	verify := command.NewVerifyCommand(reportdata)
-	_, err = conn.Write(verify)
-	if err != nil {
-		log.Fatal("write data failed", err)
-	}
 	length, err = conn.Read(received)
 	if err != nil {
 		log.Fatal("read data failed", err)
 	}
-	log.Println("got verify result:", string(received[:length]))
+
+	key, err := DoParseKey(random_c, received[1:length], conn)
+	if err != nil {
+		log.Fatal("do parse key failed:", err)
+	}
+	log.Println("succeed got secret key:", hex.EncodeToString(key))
+
 	time.Sleep(time.Second)
 	log.Println("goto disconnect")
 

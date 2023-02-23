@@ -4,6 +4,7 @@ const (
 	AUTH_COMMAND byte = iota
 	VERIFY_COMMAND
 	GETKEY_COMMAND
+	SENDKEY_COMMAND
 	DISCONNECT_COMMAND
 )
 
@@ -16,6 +17,9 @@ func NewVerifyCommand(data []byte) []byte {
 
 func NewGetKeyCommand(data []byte) []byte {
 	return append([]byte{GETKEY_COMMAND}, data...)
+}
+func NewSendKeyCommand(data []byte) []byte {
+	return append([]byte{SENDKEY_COMMAND}, data...)
 }
 
 func NewDisconnectCommand() []byte {
