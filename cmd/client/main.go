@@ -31,7 +31,7 @@ func DoAuth(random_a []byte, conn net.Conn) {
 
 // check remote report and get random_b
 func DoVerify(random_a []byte, payload []byte, conn net.Conn) ([]byte, error) {
-	report, err := enclave.VerifyLocalReport(payload)
+	report, err := enclave.VerifyRemoteReport(payload)
 	if err != nil {
 		log.Fatal("get remote report failed:", err)
 	}
@@ -56,7 +56,7 @@ func DoGetKey(random_b []byte, random_c []byte, conn net.Conn) {
 }
 
 func DoParseKey(random_c []byte, payload []byte, conn net.Conn) ([]byte, error) {
-	report, err := enclave.VerifyLocalReport(payload)
+	report, err := enclave.VerifyRemoteReport(payload)
 	if err != nil {
 		log.Fatal("get remote report failed:", err)
 	}
@@ -98,9 +98,11 @@ func main() {
 	if err != nil {
 		log.Fatal("do verify failed:", err)
 	}
+	log.Println("doverify passed, got random_b:", hex.EncodeToString(random_b))
 	// step 3. GetKey
 	random_c := common.GenRandom()
 	DoGetKey(random_b, random_c, conn)
+	log.Println("generate random_c:", hex.EncodeToString(random_c))
 
 	length, err = conn.Read(received)
 	if err != nil {

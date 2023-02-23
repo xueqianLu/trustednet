@@ -94,7 +94,7 @@ func handleRequest(conn net.Conn) {
 	// incoming request
 	buffer := make([]byte, 65535)
 	continues := true
-	random := make([]byte, 0)
+	random := make([]byte, 32)
 	defer conn.Close()
 
 	for continues {
