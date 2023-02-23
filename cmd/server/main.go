@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/hex"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/xueqianLu/trustednet/command"
@@ -60,6 +61,7 @@ func handleRequest(conn net.Conn) {
 			if err != nil {
 				log.Fatal("get remote report failed", err)
 			}
+			log.Println("send report:", hex.EncodeToString(reportdata))
 			conn.Write(reportdata)
 			verifydata = common.CopyBytes(keydata)
 		case command.VERIFY_COMMAND:

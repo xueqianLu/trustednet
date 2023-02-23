@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/xueqianLu/trustednet/command"
 	"log"
@@ -40,6 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatal("read data failed", err)
 	}
+	log.Println("got auth data:", hex.EncodeToString(received[:length]))
 
 	report, err := enclave.VerifyRemoteReport(received[:length])
 	if err != nil {
