@@ -1,0 +1,16 @@
+{
+ "exe": "trustedserver",
+ "key": "private.pem",
+ "debug": true,
+ "heapSize": 512,
+ "executableHeap": false,
+ "productID": 1,
+ "securityVersion": 1,
+ "mounts": [{
+  "source": "nodedata",
+  "target": "nodedata",
+  "type": "hostfs"
+ }],
+ "env": null,
+ "files": null
+}

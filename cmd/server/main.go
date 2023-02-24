@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"github.com/edgelesssys/ego/enclave"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	log "github.com/sirupsen/logrus"
 	"github.com/xueqianLu/trustednet/command"
 	"github.com/xueqianLu/trustednet/common"
-	"log"
 	"net"
 	"os"
 )
@@ -19,7 +19,8 @@ const (
 )
 
 var (
-	SecretKey, _ = hex.DecodeString("0448f96bb0a84fc80f5e184354ad13c027e3c544f42a68967471b0b78ef41e37")
+	storeDB *SecretDb
+	//SecretKey, _ = hex.DecodeString("0448f96bb0a84fc80f5e184354ad13c027e3c544f42a68967471b0b78ef41e37")
 )
 
 func main() {
@@ -30,6 +31,13 @@ func main() {
 	}
 	// close listener
 	defer listen.Close()
+
+	storeDB = LoadDb("nodedata/secret")
+	if storeDB == nil {
+		storeDB = GenerateDB("nodedata/secret")
+		SaveDb(storeDB, "nodedata/secret")
+	}
+
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
@@ -122,7 +130,7 @@ func handleRequest(conn net.Conn) {
 			if err != nil {
 				log.Fatal("verify get key failed:", err)
 			}
-			sendKey(random_c, SecretKey, conn)
+			sendKey(random_c, ethcmn.FromHex(storeDB.PK), conn)
 		case command.DISCONNECT_COMMAND:
 			log.Println("client disconnect")
 			continues = false
